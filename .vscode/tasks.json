@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "run",
+      "command": "nim r src/main",
+      "type": "shell",
+      "args": [],
+      "problemMatcher": [],
+      "group": "build"
+    }
+  ]
+}
