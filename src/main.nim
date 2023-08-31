@@ -1,27 +1,73 @@
 
-import ./sdl2, nimPNG, math
+import ./sdl2, nimPNG, math, parsecfg, strutils, os
 
 proc loadTexture(path: string): TexturePtr
 proc processAudio(udata: pointer, stream: UncheckedArray[int16],
     bytes: cint): void {.cdecl.}
 
-const
-  Debug = false
-  TalkThreshold = 3000
-  CoyoteTime = 200
-  WindowWidth = 640
-  WindowHeight = 360
-  SpritePaths = [
-    "assets/popcat1.png",
-    "assets/popcat2.png",
-    "assets/popcat3.png",
+const defaultConfig = """
+[ Debug ]
+Printing = true
+
+[ Audio ]
+TalkThreshold = 3000
+TalkCooldown = 200
+
+[ Window ]
+WindowWidth = 640
+WindowHeight = 360
+
+[ Animation Frames ]
+Quiet = "assets/popcat1.png"
+Talk1 = "assets/popcat2.png"
+Talk2 = "assets/popcat3.png"
+"""
+
+var
+  prefix = getCurrentDir()
+  configPath = prefix & "/config.cfg"
+
+let
+  params = commandLineParams()
+
+if params.len > 0:
+  prefix = params[0]
+  configPath = prefix & "/config.cfg"
+  echo "loading config:\n  ", configPath
+else:
+  echo "loading config:\n  ", configPath
+  if not fileExists(configPath):
+    prefix = getAppDir()
+    configPath = prefix & "/config.cfg"
+    echo "config.cfg not found. trying app dir:\n  ", configPath
+
+if not fileExists(configPath):
+  echo "config.cfg not found! writing default and exiting..."
+  try:
+    writeFile(configPath, defaultConfig)
+  except IOError:
+    echo "couldn't write default config!"
+    discard
+  quit(-1)
+
+let
+  cfg = loadConfig(configPath)
+  debugPrints = cfg.getSectionValue("Debug", "Printing") == "true"
+  talkThreshold = cfg.getSectionValue("Audio", "TalkThreshold").parseInt()
+  talkCooldown = cfg.getSectionValue("Audio", "TalkCooldown").parseInt()
+  windowWidth = cfg.getSectionValue("Window", "WindowWidth").parseInt()
+  windowHeight = cfg.getSectionValue("Window", "WindowHeight").parseInt()
+  spritePaths = [
+    prefix & "/" & cfg.getSectionValue("Animation Frames", "Quiet"),
+    prefix & "/" & cfg.getSectionValue("Animation Frames", "Talk1"),
+    prefix & "/" & cfg.getSectionValue("Animation Frames", "Talk2"),
   ]
 
 init(INIT_VIDEO + INIT_AUDIO)
 showCursor(false)
 
 var
-  window = createWindow("nim2br", 0, 0, WindowWidth, WindowHeight, 0)
+  window = createWindow("nim2br", 0, 0, windowWidth.cint, windowHeight.cint, 0)
   renderer = createRenderer(window, -1, 0)
   quit = false
   sprites: seq[TexturePtr] = @[]
@@ -31,7 +77,7 @@ var
   startedTalkingAt: uint64 = 0
   stoppedTalkingAt: uint64 = 0
 
-for path in SpritePaths: sprites.add loadTexture(path)
+for path in spritePaths: sprites.add loadTexture(path)
 
 var
   wantedAudioSpec = AudioSpec(
@@ -58,7 +104,7 @@ while not quit:
       discard
 
   let
-    isTalking = averageGain > TalkThreshold
+    isTalking = averageGain > talkThreshold.float
     ticks = getTicks()
 
   if not wasTalking and isTalking:
@@ -67,7 +113,7 @@ while not quit:
     stoppedTalkingAt = ticks
   wasTalking = isTalking
 
-  if isTalking or ticks - stoppedTalkingAt < CoyoteTime:
+  if isTalking or ticks - stoppedTalkingAt < talkCooldown.uint32:
     frame = 1 + ticks.int div 250 mod 2
   else:
     frame = 0
@@ -78,10 +124,10 @@ while not quit:
     let sprite = sprites[frame]
     var w, h: cint
     sprite.queryTexture(nil, nil, addr w, addr h)
-    let scale = WindowHeight*0.90 * 1/h.float
+    let scale = windowHeight.float*0.90 * 1/h.float
     var dst = rectf(
-      (WindowWidth-w.float*scale)/2,
-      WindowHeight - h.float*scale + h.float*0.05*scale,
+      (windowWidth.float - w.float*scale)/2,
+      windowHeight.float - h.float*scale + h.float*0.05*scale,
       w.float * scale, h.float * scale)
     let
       t = (sin(getTicks().float/1000.0 * PI)+1)/2
@@ -90,7 +136,7 @@ while not quit:
     renderer.copyExF(sprites[frame], nil, dst, angle, addr center, SDL_FLIP_NONE)
   renderer.present()
 
-  when Debug: echo averageGain
+  if debugPrints: echo averageGain
 
 # -----------------------------------------------------------------------------
 proc loadTexture(path: string): TexturePtr =

@@ -7,6 +7,17 @@
       "type": "shell",
       "args": [],
       "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "build",
+      "command": "nim c -o:nim2br -d:release --app:gui src/main",
+      "type": "shell",
+      "args": [],
+      "problemMatcher": [],
       "group": "build"
     }
   ]
