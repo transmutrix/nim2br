@@ -1,5 +1,7 @@
 # nim2br
 
+![](screenshot.png)
+
 the simplest possible program for PNGTubing!
 
 under 200 LOC!
