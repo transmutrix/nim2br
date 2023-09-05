@@ -14,7 +14,7 @@
     },
     {
       "label": "build",
-      "command": "nim c -o:nim2br -d:release --app:gui src/main",
+      "command": "nim c -o:nim2br -d:release --app:gui src/main && cp nim2br /usr/local/bin",
       "type": "shell",
       "args": [],
       "problemMatcher": [],

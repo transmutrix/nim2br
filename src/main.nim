@@ -53,15 +53,17 @@ if not fileExists(configPath):
 let
   cfg = loadConfig(configPath)
   debugPrints = cfg.getSectionValue("Debug", "Printing") == "true"
-  talkThreshold = cfg.getSectionValue("Audio", "TalkThreshold").parseInt()
-  talkCooldown = cfg.getSectionValue("Audio", "TalkCooldown").parseInt()
-  windowWidth = cfg.getSectionValue("Window", "WindowWidth").parseInt()
-  windowHeight = cfg.getSectionValue("Window", "WindowHeight").parseInt()
+  talkThreshold = cfg.getSectionValue("Audio", "TalkThreshold", "1000").parseInt()
+  talkCooldown = cfg.getSectionValue("Audio", "TalkCooldown", "200").parseInt()
+  windowWidth = cfg.getSectionValue("Window", "WindowWidth", "640").parseInt()
+  windowHeight = cfg.getSectionValue("Window", "WindowHeight", "480").parseInt()
   spritePaths = [
     prefix & "/" & cfg.getSectionValue("Animation Frames", "Quiet"),
     prefix & "/" & cfg.getSectionValue("Animation Frames", "Talk1"),
     prefix & "/" & cfg.getSectionValue("Animation Frames", "Talk2"),
   ]
+  waggleMaxAngle = cfg.getSectionValue("Waggle", "MaxAngle", "5.0").parseFloat()
+  wagglePeriod = cfg.getSectionValue("Waggle", "Period", "1.0").parseFloat()
 
 init(INIT_VIDEO + INIT_AUDIO)
 showCursor(false)
@@ -130,8 +132,8 @@ while not quit:
       windowHeight.float - h.float*scale + h.float*0.05*scale,
       w.float * scale, h.float * scale)
     let
-      t = (sin(getTicks().float/1000.0 * PI)+1)/2
-      angle = (1.0 - t) * -5 + t * 5
+      t = (sin(getTicks().float/1000.0 * 1/wagglePeriod * PI)+1)/2
+      angle = (1.0 - t) * -(waggleMaxAngle) + t * (waggleMaxAngle)
       center = pointf(w.float/2 * scale, h.float * scale)
     renderer.copyExF(sprites[frame], nil, dst, angle, addr center, SDL_FLIP_NONE)
   renderer.present()
