@@ -1,4 +1,3 @@
-
 import ./sdl2, nimPNG, math, parsecfg, strutils, os
 
 proc loadTexture(path: string): TexturePtr
@@ -26,11 +25,17 @@ Quiet = "assets/popcat1.png"
 EyeBlink = "assets/popcatblinks.png"
 Talk1 = "assets/popcat2.png"
 Talk2 = "assets/popcat3.png"
+
+[ Emotions ]
+Amused = "assets/amused.png"
+Good = "assets/good.png"
+Bad = "assets/bad.png"
 """
 
 var
   prefix = getCurrentDir()
   configPath = prefix & "/config.cfg"
+  keyIsPressed = false
 
 let
   params = commandLineParams()
@@ -69,6 +74,9 @@ let
     prefix & "/" & cfg.getSectionValue("Animation Frames", "EyeBlink"),
     prefix & "/" & cfg.getSectionValue("Animation Frames", "Talk1"),
     prefix & "/" & cfg.getSectionValue("Animation Frames", "Talk2"),
+    prefix & "/" & cfg.getSectionValue("Emotions", "Amused"),
+    prefix & "/" & cfg.getSectionValue("Emotions", "Good"),
+    prefix & "/" & cfg.getSectionValue("Emotions", "Bad"),
   ]
   waggleMaxAngle = cfg.getSectionValue("Waggle", "MaxAngle", "5.0").parseFloat()
   wagglePeriod = cfg.getSectionValue("Waggle", "Period", "1.0").parseFloat()
@@ -112,32 +120,53 @@ while not quit:
     case e.kind:
     of QuitEvent:
       quit = true
+    of KeyDown:
+      case e.key.keysym.sym
+      of K_1:
+        frame = 4 # frame for Amused
+        keyIsPressed = true
+      of K_2:
+        frame = 5 # frame for Good
+        keyIsPressed = true
+      of K_3:
+        frame = 6 # frame for Bad
+        keyIsPressed = true
+      else:
+        discard
+    of KeyUp:
+      case e.key.keysym.sym
+      of K_1, K_2, K_3:
+        frame = 0 # Back to default frame
+        keyIsPressed = false
+      else:
+        discard
     else:
       discard
 
-  let
-    isTalking = averageGain > talkThreshold.float
-    ticks = getTicks()
+  if not keyIsPressed:
+    let
+      isTalking = averageGain > talkThreshold.float
+      ticks = getTicks()
 
-  if not wasTalking and isTalking:
-    startedTalkingAt = ticks
-  if wasTalking and not isTalking:
-    stoppedTalkingAt = ticks
-  wasTalking = isTalking
+    if not wasTalking and isTalking:
+      startedTalkingAt = ticks
+    if wasTalking and not isTalking:
+      stoppedTalkingAt = ticks
+    wasTalking = isTalking
 
-  let
-    currentTime = getTicks()
-    timeSinceLastBlink = currentTime - lastBlinkTime
+    let
+      currentTime = getTicks()
+      timeSinceLastBlink = currentTime - lastBlinkTime
 
-  if isTalking or ticks - stoppedTalkingAt < talkCooldown.uint32:
-    frame = 2 + ticks.int div 250 mod 2
-  elif timeSinceLastBlink >= blinkInterval.uint32:
-      if timeSinceLastBlink - blinkDuration.uint32 <= blinkInterval.uint32:
-        frame = 1
-      else:
-        lastBlinkTime = currentTime
-  else:
-    frame = 0
+    if isTalking or ticks - stoppedTalkingAt < talkCooldown.uint32:
+      frame = 2 + ticks.int div 250 mod 2
+    elif timeSinceLastBlink >= blinkInterval.uint32:
+        if timeSinceLastBlink - blinkDuration.uint32 <= blinkInterval.uint32:
+          frame = 1
+        else:
+          lastBlinkTime = currentTime
+    else:
+      frame = 0
 
   renderer.setDrawColor(0, 255, 0, 0)
   renderer.clear()
