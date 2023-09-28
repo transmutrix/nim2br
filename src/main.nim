@@ -13,12 +13,17 @@ Printing = true
 TalkThreshold = 3000
 TalkCooldown = 200
 
+[ Animation ]
+BlinkDuration = 100
+BlinkInterval = 2000
+
 [ Window ]
 WindowWidth = 640
 WindowHeight = 360
 
 [ Animation Frames ]
 Quiet = "assets/popcat1.png"
+EyeBlink = "assets/popcatblinks.png"
 Talk1 = "assets/popcat2.png"
 Talk2 = "assets/popcat3.png"
 """
@@ -55,10 +60,13 @@ let
   debugPrints = cfg.getSectionValue("Debug", "Printing") == "true"
   talkThreshold = cfg.getSectionValue("Audio", "TalkThreshold", "1000").parseInt()
   talkCooldown = cfg.getSectionValue("Audio", "TalkCooldown", "200").parseInt()
+  blinkDuration = cfg.getSectionValue("Animation", "BlinkDuration", "100").parseInt()
+  blinkInterval = cfg.getSectionValue("Animation", "BlinkInterval", "2000").parseInt()
   windowWidth = cfg.getSectionValue("Window", "WindowWidth", "640").parseInt()
   windowHeight = cfg.getSectionValue("Window", "WindowHeight", "480").parseInt()
   spritePaths = [
     prefix & "/" & cfg.getSectionValue("Animation Frames", "Quiet"),
+    prefix & "/" & cfg.getSectionValue("Animation Frames", "EyeBlink"),
     prefix & "/" & cfg.getSectionValue("Animation Frames", "Talk1"),
     prefix & "/" & cfg.getSectionValue("Animation Frames", "Talk2"),
   ]
@@ -78,6 +86,8 @@ var
   wasTalking = false
   startedTalkingAt: uint64 = 0
   stoppedTalkingAt: uint64 = 0
+  lastBlinkTime: uint32 = 0
+
 
 for path in spritePaths: sprites.add loadTexture(path)
 
@@ -115,8 +125,17 @@ while not quit:
     stoppedTalkingAt = ticks
   wasTalking = isTalking
 
+  let
+    currentTime = getTicks()
+    timeSinceLastBlink = currentTime - lastBlinkTime
+
   if isTalking or ticks - stoppedTalkingAt < talkCooldown.uint32:
-    frame = 1 + ticks.int div 250 mod 2
+    frame = 2 + ticks.int div 250 mod 2
+  elif timeSinceLastBlink >= blinkInterval.uint32:
+      if timeSinceLastBlink - blinkDuration.uint32 <= blinkInterval.uint32:
+        frame = 1
+      else:
+        lastBlinkTime = currentTime
   else:
     frame = 0
 
