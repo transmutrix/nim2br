@@ -74,6 +74,7 @@ let
     prefix & "/" & cfg.getSectionValue("Animation Frames", "EyeBlink"),
     prefix & "/" & cfg.getSectionValue("Animation Frames", "Talk1"),
     prefix & "/" & cfg.getSectionValue("Animation Frames", "Talk2"),
+    prefix & "/" & cfg.getSectionValue("Animation Frames", "Talk3"),
     prefix & "/" & cfg.getSectionValue("Emotions", "Amused"),
     prefix & "/" & cfg.getSectionValue("Emotions", "Good"),
     prefix & "/" & cfg.getSectionValue("Emotions", "Bad"),
@@ -123,13 +124,13 @@ while not quit:
     of KeyDown:
       case e.key.keysym.sym
       of K_1:
-        frame = 4 # frame for Amused
+        frame = 5 # frame for Amused
         keyIsPressed = true
       of K_2:
-        frame = 5 # frame for Good
+        frame = 6 # frame for Good
         keyIsPressed = true
       of K_3:
-        frame = 6 # frame for Bad
+        frame = 7 # frame for Bad
         keyIsPressed = true
       else:
         discard
@@ -159,7 +160,7 @@ while not quit:
       timeSinceLastBlink = currentTime - lastBlinkTime
 
     if isTalking or ticks - stoppedTalkingAt < talkCooldown.uint32:
-      frame = 2 + ticks.int div 250 mod 2
+      frame = 2 + ticks.int div 250 mod 3
     elif timeSinceLastBlink >= blinkInterval.uint32:
         if timeSinceLastBlink - blinkDuration.uint32 <= blinkInterval.uint32:
           frame = 1
