@@ -1,4 +1,3 @@
-
 import ./sdl2, nimPNG, math, parsecfg, strutils, os
 
 proc loadTexture(path: string): TexturePtr
@@ -13,19 +12,30 @@ Printing = true
 TalkThreshold = 3000
 TalkCooldown = 200
 
+[ Animation ]
+BlinkDuration = 100
+BlinkInterval = 2000
+
 [ Window ]
 WindowWidth = 640
 WindowHeight = 360
 
 [ Animation Frames ]
 Quiet = "assets/popcat1.png"
+EyeBlink = "assets/popcatblinks.png"
 Talk1 = "assets/popcat2.png"
 Talk2 = "assets/popcat3.png"
+
+[ Emotions ]
+Amused = "assets/amused.png"
+Good = "assets/good.png"
+Bad = "assets/bad.png"
 """
 
 var
   prefix = getCurrentDir()
   configPath = prefix & "/config.cfg"
+  keyIsPressed = false
 
 let
   params = commandLineParams()
@@ -55,12 +65,19 @@ let
   debugPrints = cfg.getSectionValue("Debug", "Printing") == "true"
   talkThreshold = cfg.getSectionValue("Audio", "TalkThreshold", "1000").parseInt()
   talkCooldown = cfg.getSectionValue("Audio", "TalkCooldown", "200").parseInt()
+  blinkDuration = cfg.getSectionValue("Animation", "BlinkDuration", "100").parseInt()
+  blinkInterval = cfg.getSectionValue("Animation", "BlinkInterval", "2000").parseInt()
   windowWidth = cfg.getSectionValue("Window", "WindowWidth", "640").parseInt()
   windowHeight = cfg.getSectionValue("Window", "WindowHeight", "480").parseInt()
   spritePaths = [
     prefix & "/" & cfg.getSectionValue("Animation Frames", "Quiet"),
+    prefix & "/" & cfg.getSectionValue("Animation Frames", "EyeBlink"),
     prefix & "/" & cfg.getSectionValue("Animation Frames", "Talk1"),
     prefix & "/" & cfg.getSectionValue("Animation Frames", "Talk2"),
+    prefix & "/" & cfg.getSectionValue("Animation Frames", "Talk3"),
+    prefix & "/" & cfg.getSectionValue("Emotions", "Amused"),
+    prefix & "/" & cfg.getSectionValue("Emotions", "Good"),
+    prefix & "/" & cfg.getSectionValue("Emotions", "Bad"),
   ]
   waggleMaxAngle = cfg.getSectionValue("Waggle", "MaxAngle", "5.0").parseFloat()
   wagglePeriod = cfg.getSectionValue("Waggle", "Period", "1.0").parseFloat()
@@ -78,6 +95,8 @@ var
   wasTalking = false
   startedTalkingAt: uint64 = 0
   stoppedTalkingAt: uint64 = 0
+  lastBlinkTime: uint32 = 0
+
 
 for path in spritePaths: sprites.add loadTexture(path)
 
@@ -102,23 +121,53 @@ while not quit:
     case e.kind:
     of QuitEvent:
       quit = true
+    of KeyDown:
+      case e.key.keysym.sym
+      of K_1:
+        frame = 5 # frame for Amused
+        keyIsPressed = true
+      of K_2:
+        frame = 6 # frame for Good
+        keyIsPressed = true
+      of K_3:
+        frame = 7 # frame for Bad
+        keyIsPressed = true
+      else:
+        discard
+    of KeyUp:
+      case e.key.keysym.sym
+      of K_1, K_2, K_3:
+        frame = 0 # Back to default frame
+        keyIsPressed = false
+      else:
+        discard
     else:
       discard
 
-  let
-    isTalking = averageGain > talkThreshold.float
-    ticks = getTicks()
+  if not keyIsPressed:
+    let
+      isTalking = averageGain > talkThreshold.float
+      ticks = getTicks()
 
-  if not wasTalking and isTalking:
-    startedTalkingAt = ticks
-  if wasTalking and not isTalking:
-    stoppedTalkingAt = ticks
-  wasTalking = isTalking
+    if not wasTalking and isTalking:
+      startedTalkingAt = ticks
+    if wasTalking and not isTalking:
+      stoppedTalkingAt = ticks
+    wasTalking = isTalking
 
-  if isTalking or ticks - stoppedTalkingAt < talkCooldown.uint32:
-    frame = 1 + ticks.int div 250 mod 2
-  else:
-    frame = 0
+    let
+      currentTime = getTicks()
+      timeSinceLastBlink = currentTime - lastBlinkTime
+
+    if isTalking or ticks - stoppedTalkingAt < talkCooldown.uint32:
+      frame = 2 + ticks.int div 250 mod 3
+    elif timeSinceLastBlink >= blinkInterval.uint32:
+        if timeSinceLastBlink - blinkDuration.uint32 <= blinkInterval.uint32:
+          frame = 1
+        else:
+          lastBlinkTime = currentTime
+    else:
+      frame = 0
 
   renderer.setDrawColor(0, 255, 0, 0)
   renderer.clear()
